@@ -1,0 +1,282 @@
+[
+  {
+    "number": 1,
+    "slug": "introduction-to-data-science",
+    "title": "Introduction to Data Science",
+    "overview": "Understand how data science combines domain knowledge, computing, statistics, and communication to answer practical questions.",
+    "pages": [
+      {
+        "title": "What Data Science Is",
+        "paragraphs": [
+          "Data science is a disciplined way to learn from data. It brings together subject-area knowledge, programming, statistical reasoning, and communication. The goal is not simply to produce charts or run algorithms; it is to create reliable evidence that helps answer a clearly stated question.",
+          "An analysis begins by understanding a real problem and the people affected by it. The analyst then identifies what evidence is needed, where suitable data may come from, and what limits apply. Results should be explained in language that decision-makers and the public can understand."
+        ],
+        "bullets": ["Data are observations collected for a purpose.", "Analytics describes and investigates patterns; machine learning learns patterns for prediction or decision support.", "A useful result is relevant, reproducible, understandable, and responsibly produced."]
+      },
+      {
+        "title": "Data Types and Measurement",
+        "paragraphs": [
+          "A dataset is commonly arranged as observations and variables. An observation is the entity or event described by a row; a variable records one characteristic in a column. Correctly identifying the observation unit prevents mistakes such as counting the same person several times or mixing measurements from different time periods.",
+          "Variables may be numeric, categorical, text, date/time, or identifiers. Measurement scales also matter: categories may be nominal or ordered, while numeric values may be counts or measurements. A postal code may look numeric but should usually be treated as a category, not averaged."
+        ],
+        "bullets": ["Structured data use a defined table or schema; semi-structured data include JSON; unstructured data include images and free text.", "Check units, allowed values, ranges, and whether a field is an identifier.", "Document the source, collection date, and meaning of important fields."]
+      },
+      {
+        "title": "The Data Science Lifecycle",
+        "paragraphs": [
+          "A typical workflow moves through problem framing, data acquisition, preparation, exploration, analysis or modeling, evaluation, and communication. These are not rigid one-way steps. Exploration may reveal that the original question is unclear, while evaluation may show that more appropriate data are required.",
+          "Problem framing turns a broad concern into an answerable question. A good question identifies the population, outcome, time period, and comparison of interest. It also defines what a useful answer would look like and what decisions the analysis can reasonably inform."
+        ],
+        "bullets": ["Ask: define the question, audience, and success criteria.", "Prepare and explore: assess quality, distributions, and limitations.", "Evaluate and communicate: test whether evidence supports the claim and explain uncertainty."]
+      },
+      {
+        "title": "Tools and Reproducible Work",
+        "paragraphs": [
+          "Python is widely used for data workflows. Notebooks combine code, output, and explanatory text, while scripts package repeatable tasks. Libraries such as NumPy and pandas support numerical and tabular work; Matplotlib and Seaborn support visualization. Tool choice should follow the task rather than determine it.",
+          "Reproducibility means another person can follow the steps and understand how the results were made. Keep raw data unchanged, record transformations, use clear file names, and state software assumptions. A notebook should run from its first cell to its last without depending on hidden state."
+        ],
+        "bullets": ["Separate original data from processed outputs.", "Use descriptive variable names and small, testable steps.", "Record software versions, sources, assumptions, and any manual decisions."]
+      },
+      {
+        "title": "Responsible Data Science",
+        "paragraphs": [
+          "Data work can affect privacy, access, and opportunity. Before collecting or reusing data, check permission, consent, terms of use, and whether sensitive information is necessary. Remove or protect personal identifiers where appropriate, and do not publish confidential records or access credentials.",
+          "Bias can enter through who is represented, how variables are measured, and how outcomes are interpreted. A model or summary may perform differently across groups. Analysts should examine who may be missing, who may be harmed, and whether an apparently neutral measure encodes unequal conditions."
+        ],
+        "bullets": ["Use only data you are permitted to access and use.", "Minimize personal data and protect files and credentials.", "Describe limitations and avoid claims that the evidence cannot support."]
+      },
+      {
+        "title": "Guided Study and Mini-Project",
+        "paragraphs": [
+          "Choose a small, openly available dataset and identify its source, owner, date, license, and intended use. Write down the observation unit and explain the most important variables. Check the number of rows, missing fields, duplicates, and possible sensitive information before attempting analysis.",
+          "Frame one measurable question and list the columns needed to answer it. Prepare a short data profile, then write a finding that refers to specific evidence. State what the dataset cannot establish—for example, a pattern in one sample may not describe every population or prove a cause."
+        ],
+        "bullets": ["Deliver: question, source and provenance, observation unit, variables, and data-quality notes.", "Include one evidence-based finding and one limitation.", "Review: What distinguishes an observation from a variable? Why should an analysis begin with a question?"]
+      }
+    ]
+  },
+  {
+    "number": 2,
+    "slug": "data-extraction",
+    "title": "Data Extraction",
+    "overview": "Collect data from files, databases, and permitted APIs while preserving provenance, structure, and data quality.",
+    "pages": [
+      {
+        "title": "Sources and Extraction Planning",
+        "paragraphs": [
+          "Data extraction is the controlled collection of information from files, databases, services, or instruments. Before collecting anything, define the question and identify the minimum fields and time range needed. Taking an entire source without purpose increases cost, privacy exposure, and the chance of handling irrelevant data.",
+          "A source should be appropriate, lawful, sufficiently complete, and trustworthy for the intended analysis. Record who created it, how it was collected, when it was updated, and any known restrictions. Data quality begins with choosing a source whose meaning and coverage are understood."
+        ],
+        "bullets": ["Common sources include CSV files, spreadsheets, JSON, relational tables, and documented APIs.", "Check license, access permissions, terms, and privacy requirements before retrieval.", "Record source name, retrieval time, version, and intended use."]
+      },
+      {
+        "title": "Files and Structured Formats",
+        "paragraphs": [
+          "CSV stores rows and columns as text, so dates, numbers, separators, and missing-value markers may require explicit interpretation. JSON represents nested objects and arrays and may need normalization before it becomes a flat table. Spreadsheets can contain formatting, formulas, merged cells, and multiple sheets that complicate automated use.",
+          "Inspect a small sample before loading a large file. Confirm encoding, delimiter, header row, field names, and expected record count. Preserve the original file and write cleaned outputs separately so the extraction can be repeated and audited."
+        ],
+        "bullets": ["Validate column names, data types, row counts, and representative values.", "Treat identifiers as text when arithmetic on them has no meaning.", "Record parsing options and how missing values are represented."]
+      },
+      {
+        "title": "Databases and SQL",
+        "paragraphs": [
+          "Relational databases store related information in tables, with keys linking records. SQL lets analysts select columns and filter rows close to where data are stored. Queries should request only the needed fields and records; this reduces transfer time and helps protect unrelated data.",
+          "A basic query uses SELECT to choose columns, FROM to name a table, WHERE to filter, ORDER BY to sort, and LIMIT to inspect a sample. Joins combine related tables, but incorrect join keys can duplicate or drop records. Check row counts before and after joins."
+        ],
+        "bullets": ["Use explicit column names rather than SELECT * for reusable analysis.", "Check key uniqueness and expected join relationships.", "Parameterize user-supplied values in application queries; do not build unsafe SQL by string concatenation."]
+      },
+      {
+        "title": "APIs and Reliable Retrieval",
+        "paragraphs": [
+          "An API exposes data through documented endpoints. Requests may include query parameters for dates, categories, or page numbers and commonly return JSON. A successful response should be checked for status, expected fields, and useful metadata—not assumed to be valid merely because the request completed.",
+          "Many APIs limit request frequency or divide results into pages. Follow documentation, respect rate limits, handle temporary failures, and avoid collecting data outside the intended permission. Store credentials in protected environment settings rather than notebooks, browser code, or public repositories."
+        ],
+        "bullets": ["Inspect response status, schema, pagination, and update timestamps.", "Use small requests and follow the provider's documented limits.", "Never expose access tokens, passwords, or private keys."]
+      },
+      {
+        "title": "Ingestion Checks and Provenance",
+        "paragraphs": [
+          "Ingestion checks determine whether retrieved data are complete and plausible. Compare expected and actual row counts, look for missing required fields, validate data types and ranges, and inspect duplicate keys. A successful download does not guarantee that the content is current, complete, or semantically correct.",
+          "Provenance records where data came from and what happened to them. A reproducible extraction log can include a source URL or database, extraction time, query or parameters, software version, number of records, and transformations. These details help another analyst recreate the dataset and diagnose changes."
+        ],
+        "bullets": ["Check schema, null counts, duplicates, and date coverage.", "Keep an immutable raw copy when permitted.", "Document exclusions, filters, and failed or partial retrievals."]
+      },
+      {
+        "title": "Practical Extraction Project",
+        "paragraphs": [
+          "Build a small extraction notebook using an openly licensed CSV or a documented public API. State the research question and why each selected field is needed. Load or retrieve a limited sample, inspect its schema, and apply a filter that can be explained and repeated.",
+          "Finish with a short extraction report containing the source, permission or license, retrieval time, parameters, record count, quality checks, and limitations. A second person should be able to reproduce the same steps without receiving private credentials."
+        ],
+        "bullets": ["Deliver: reproducible notebook, source citation, extraction log, and schema checks.", "Review: Why do API pagination and database filters matter? Which metadata help reproduce a dataset?", "Confirm that the collection method follows permission, privacy, and provider requirements."]
+      }
+    ]
+  },
+  {
+    "number": 3,
+    "slug": "data-visualization",
+    "title": "Data Visualization",
+    "overview": "Select and design clear, honest charts that reveal comparisons, distributions, relationships, and changes over time.",
+    "pages": [
+      {
+        "title": "Why Visualize Data",
+        "paragraphs": [
+          "Visualization uses visual marks to help people inspect evidence. A chart can reveal a trend, compare categories, show a distribution, or expose unusual observations. It is useful both during analysis and when communicating findings, but a chart is not a substitute for understanding how the data were collected.",
+          "Begin with the question and audience. Decide what the viewer should compare or notice, then select an encoding that makes that task easy. A visually attractive chart can still mislead if it omits context, hides uncertainty, or uses an unsuitable scale."
+        ],
+        "bullets": ["Comparison asks how values differ across groups.", "Distribution asks how values are spread and whether unusual values appear.", "Relationship and time questions need encodings suited to paired or ordered data."]
+      },
+      {
+        "title": "Choose the Right Chart",
+        "paragraphs": [
+          "Bar charts compare quantities across categories; start the value axis at zero when bar length represents magnitude. Line charts show change across a meaningful order such as time. Scatterplots display paired numeric observations and help reveal direction, clusters, and unusual points.",
+          "Histograms show the distribution of a numeric variable, and their bin width changes the visible shape. Box plots summarize median and quartiles but can hide detail in small groups. Avoid using pie charts for many categories or 3-D effects that make values harder to compare."
+        ],
+        "bullets": ["Match chart type to variable type and analytical task.", "Order categories intentionally and label units.", "Show sample size or uncertainty when it changes interpretation."]
+      },
+      {
+        "title": "Visual Design and Readability",
+        "paragraphs": [
+          "Position and length are generally easier to compare accurately than area or color intensity. Use a restrained palette, reserve emphasis for important information, and choose color combinations that remain distinguishable for people with color-vision differences. Do not depend on color alone to communicate meaning.",
+          "Every plot should make its subject and scale clear. Titles describe the question or finding; axes include variable names and units; legends explain encodings; notes identify sources and important exclusions. Remove decoration that does not help interpret the evidence."
+        ],
+        "bullets": ["Use descriptive titles, axis labels, units, readable type, and useful legends.", "Use sufficient contrast and accessible color choices.", "Keep scales consistent when comparing multiple panels."]
+      },
+      {
+        "title": "Avoid Misleading Visuals",
+        "paragraphs": [
+          "Axis limits, bin sizes, category ordering, and omitted groups can change the impression a chart creates. A truncated bar axis exaggerates differences; a line joining unrelated categories implies continuity; a carefully selected time window may hide an opposing trend. Check whether each design decision is justified by the question.",
+          "Uncertainty and data limitations should be visible or described. A trend in an observational chart is not automatically a causal effect. Outliers should not be removed simply because they are inconvenient; first investigate whether they are errors, rare valid cases, or part of the phenomenon."
+        ],
+        "bullets": ["Check scales and baselines before interpreting visual differences.", "Identify missing records, transformations, and exclusions.", "Separate descriptive patterns from causal explanations."]
+      },
+      {
+        "title": "Build a Visual Analysis",
+        "paragraphs": [
+          "A reliable workflow starts with a question, checks the variables and quality, selects an appropriate chart, and iterates after examining the result. Use tools such as Matplotlib or Seaborn to create repeatable figures. Keep the code and the source data version so the plot can be regenerated.",
+          "After drawing a chart, ask whether the main comparison is immediately visible and whether another reasonable design would alter the conclusion. Test labels at presentation size and confirm that colors, legends, and annotations remain legible on a projector or printed page."
+        ],
+        "bullets": ["Create a first plot, inspect it, and refine labels and scales.", "Include a caption that states the finding and the evidence.", "Check accessibility, source attribution, and the effect of exclusions."]
+      },
+      {
+        "title": "Visualization Mini-Project",
+        "paragraphs": [
+          "Prepare a short visual report answering one question with three complementary charts: a comparison, a distribution, and a relationship or time trend. Use the same dataset and explain how each figure contributes evidence. Include clear labels, source information, and consistent design choices.",
+          "Write a brief caption for each figure. State what the chart shows, what it does not establish, and any important uncertainty or limitation. Ask a classmate to interpret the report without additional explanation and revise any confusing labels or visual encodings."
+        ],
+        "bullets": ["Deliver: three charts, captions, dataset citation, and limitations note.", "Review: Why can a truncated axis mislead? When is a line chart inappropriate?", "Evaluate whether the graphics are legible, accessible, and suited to the question."]
+      }
+    ]
+  },
+  {
+    "number": 4,
+    "slug": "statistical-thinking",
+    "title": "Statistical Thinking",
+    "overview": "Reason about data, variation, samples, uncertainty, and evidence without overstating conclusions.",
+    "pages": [
+      {
+        "title": "Reasoning with Data",
+        "paragraphs": [
+          "Statistical thinking recognizes that observations vary. A pattern in collected data may reflect a real process, random variation, measurement error, or selection effects. Good reasoning asks how the data were produced before deciding what a summary or model means.",
+          "A population is the group or process of interest; a sample is the portion observed. A parameter describes a population, while a statistic summarizes a sample. The two should not be confused: a sample statistic is an estimate and may change if a different sample is collected."
+        ],
+        "bullets": ["Define the population and observation unit.", "Distinguish sample evidence from population claims.", "Consider how measurement and collection processes affect results."]
+      },
+      {
+        "title": "Summarize Distributions",
+        "paragraphs": [
+          "The mean uses every numeric value but can be strongly affected by extreme observations. The median is the middle value after sorting and is more resistant to extreme values. Quartiles describe the spread of the middle half of observations; range and standard deviation provide other measures of variability.",
+          "A summary should match the distribution. A skewed dataset may be better described by a median and interquartile range than by a mean alone. Always inspect the data visually and state the number of observations because a statistic without context can hide important differences."
+        ],
+        "bullets": ["Use mean and standard deviation for reasonably symmetric data when appropriate.", "Use median and quartiles for skewed data or data with influential extremes.", "Report units, group sizes, and relevant missingness."]
+      },
+      {
+        "title": "Sampling and Uncertainty",
+        "paragraphs": [
+          "Different samples from the same population produce different estimates. This sampling variability is expected and can be studied by collecting repeated samples or using statistical models. Larger samples often reduce random uncertainty, but they do not automatically remove bias from a poor sampling frame or flawed measurement.",
+          "A confidence interval gives a range of estimates generated by a procedure with a stated long-run coverage property under its assumptions. It is not a guarantee that a particular interval contains the parameter with a specified probability after it has been computed. Explain uncertainty in accessible terms."
+        ],
+        "bullets": ["Check how participants or observations entered the sample.", "Distinguish random error from systematic bias.", "Report uncertainty alongside estimates rather than presenting precision without context."]
+      },
+      {
+        "title": "Hypothesis Tests and Practical Meaning",
+        "paragraphs": [
+          "A hypothesis test compares observed data with a model or null assumption. A p-value describes how unusual data at least as extreme as those observed would be if the null model and its assumptions were correct. It is not the probability that the null hypothesis is true.",
+          "A threshold such as 0.05 is a convention, not a boundary between truth and falsehood. Statistical significance does not measure the size or usefulness of an effect. Report effect estimates, uncertainty, study design, and practical context; consider how multiple comparisons increase the chance of apparently notable findings."
+        ],
+        "bullets": ["State the null and alternative questions clearly.", "Do not interpret p-values as effect size or proof.", "Assess practical importance and assumptions in addition to statistical evidence."]
+      },
+      {
+        "title": "Association, Causation, and Study Design",
+        "paragraphs": [
+          "Correlation describes how two variables vary together. It does not, by itself, show that one variable causes the other. A third factor may influence both, the direction may be reversed, or the association may arise through selection or chance. Causal claims require a design and assumptions that address these alternatives.",
+          "Randomized experiments can support causal interpretation when implemented well, while observational studies often require careful adjustment and still retain uncertainty. The wording of a conclusion should match the design: describe an association when the evidence only supports association."
+        ],
+        "bullets": ["Draw a simple causal diagram or list plausible confounders.", "Check whether groups are comparable and measurements are consistent.", "Avoid causal wording unless the study design justifies it."]
+      },
+      {
+        "title": "Statistical Investigation",
+        "paragraphs": [
+          "Choose a measurable question and identify the population, outcome, groups, and sampling process. Summarize one numeric variable with a plot and suitable center and spread. If comparing groups, report their sizes and show both the difference and uncertainty rather than relying on a single p-value.",
+          "Write a conclusion that separates observation from interpretation. Include the effect estimate, uncertainty, limitations, and at least one alternative explanation. A transparent report should make it possible to understand what was tested and what cannot be concluded."
+        ],
+        "bullets": ["Deliver: question, descriptive summaries, visual comparison, effect estimate, and limitations.", "Review: What does a p-value describe? Why is correlation not causation?", "Check that conclusions address the population and design actually studied."]
+      }
+    ]
+  },
+  {
+    "number": 5,
+    "slug": "feature-extraction",
+    "title": "Feature Extraction",
+    "overview": "Transform raw observations into useful, well-documented features for analysis and machine learning.",
+    "pages": [
+      {
+        "title": "Features and Representations",
+        "paragraphs": [
+          "A feature is an input variable representing some aspect of an observation. Raw data may not be directly useful to an analysis, so feature extraction transforms information into a representation that captures relevant patterns. A useful feature should have a clear definition, be available at the right time, and relate to the analytical task.",
+          "Feature extraction differs from feature selection. Extraction creates new representations or transforms raw inputs; selection chooses a subset of existing inputs. Both require domain understanding and validation. More features do not always produce better results and can increase complexity, noise, and fairness risk."
+        ],
+        "bullets": ["Define each feature's meaning, units, and source.", "Consider whether the feature would be available at prediction time.", "Keep a simple baseline for comparison."]
+      },
+      {
+        "title": "Cleaning, Encoding, and Scaling",
+        "paragraphs": [
+          "Missing values and unusual observations must be investigated before transformations are applied. Numeric features may be scaled so variables with large units do not dominate distance-based methods. Standardization centers and scales values, while min-max scaling maps values into a range; the appropriate choice depends on the method and data.",
+          "Categorical variables can be represented using one-hot encoding or other schemes. An ordinal encoding should only be used when category order has meaning. Every transformation should be documented because the resulting numeric representation may not preserve all original distinctions."
+        ],
+        "bullets": ["Choose an imputation strategy based on why values are missing.", "Encode categories without inventing a false order.", "Fit scaling and imputation on training data only."]
+      },
+      {
+        "title": "Dates, Text, and Domain Features",
+        "paragraphs": [
+          "Dates and times can yield features such as weekday, month, elapsed time, or time since an event. These features should match the problem and avoid using information from the future. Text may be represented through token counts, term frequency, or TF-IDF, but preprocessing decisions can affect meaning and fairness.",
+          "Domain features combine subject knowledge with observed fields—for example, a rate may be more meaningful than a raw count when exposure differs. Write down the formula, units, and assumptions. Carefully check edge cases such as zero denominators, time zones, spelling variations, and rare categories."
+        ],
+        "bullets": ["Create features that can be explained and reproduced.", "Avoid features that leak the outcome or future information.", "Inspect distributions and examples before relying on a transformation."]
+      },
+      {
+        "title": "Dimensionality Reduction",
+        "paragraphs": [
+          "When many features are correlated or high-dimensional, dimensionality reduction can create a smaller representation. Principal component analysis (PCA) finds directions that capture variation in numeric data. Components are combinations of original variables and may be harder to interpret than the source features.",
+          "PCA is sensitive to scale, so standardization is often considered first when units differ. The number of components should be selected for a reason, and explained variance does not guarantee that the representation preserves information relevant to a particular prediction task."
+        ],
+        "bullets": ["Standardize when scale differences would dominate the analysis.", "Fit PCA only on training data in predictive workflows.", "Explain the interpretability trade-off and information loss."]
+      },
+      {
+        "title": "Pipelines and Data Leakage",
+        "paragraphs": [
+          "Data leakage happens when information unavailable at the intended decision time influences training or evaluation. Leakage can make performance appear much better than it will be in real use. Common causes include fitting a scaler on the full dataset, using future outcomes in a feature, or allowing the same person to appear in training and test sets.",
+          "A preprocessing pipeline applies transformations in a consistent order. Split data before learning parameters such as means, category mappings, or PCA components. During cross-validation, fit the full pipeline independently within each training fold so evaluation remains honest."
+        ],
+        "bullets": ["Split before fitting learned preprocessing steps.", "Use group- or time-aware splits when records are dependent.", "Keep a final test set untouched until design decisions are complete."]
+      },
+      {
+        "title": "Feature Engineering Project",
+        "paragraphs": [
+          "Select a small dataset and define a target or analysis goal. Document at least three candidate features, including their source fields, formulas, units, and expected availability. Establish a simple baseline before adding transformations so their contribution can be assessed fairly.",
+          "Create a train/test split appropriate to the data, fit preprocessing only on training observations, and compare results with the baseline. Inspect errors and subgroup performance, note information lost through transformations, and describe potential leakage or fairness issues."
+        ],
+        "bullets": ["Deliver: feature dictionary, reproducible preprocessing workflow, baseline comparison, and limitations.", "Review: How does extraction differ from selection? Why fit scalers only on training data?", "Report whether the features improve the task and remain meaningful for intended use."]
+      }
+    ]
+  }
+]
