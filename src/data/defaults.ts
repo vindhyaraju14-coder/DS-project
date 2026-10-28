@@ -1,13 +1,12 @@
-import type { Experiment, StudentProfile } from '../types'
+import type { Experiment, ExperimentSection, StudentProfile } from '../types'
 
 export const defaultProfile: StudentProfile = {
   name: 'N.Vindhya sree',
-  rollNo: 'DS-2024-017',
+  rollNo: '24102A030082',
   section: 'DS-2',
   branch: 'Data Science',
   assistantProfessor: 'S.bosubabu',
-  photo:
-    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+  photo: `${import.meta.env.BASE_URL}student-photo.jpe`,
   github: 'https://github.com/',
   githubProfile: 'https://github.com/',
   linkedin: 'https://www.linkedin.com/',
@@ -15,36 +14,257 @@ export const defaultProfile: StudentProfile = {
   attendance: '95%',
 }
 
+const pandasFormatProgram = (
+  title: string,
+  description: string,
+  syntax: string,
+  program: string,
+): ExperimentSection => ({
+  title,
+  description,
+  aim: description,
+  syntax,
+  program,
+  output: '',
+  youtubeUrl: '',
+  githubUrl: '',
+})
+
+const dataFormatPrograms: ExperimentSection[] = [
+  pandasFormatProgram(
+    'Read a CSV File',
+    'Load comma-separated data into a DataFrame with read_csv.',
+    'pd.read_csv()',
+    `import pandas as pd
+from io import StringIO
+
+csv_data = """name,score
+Asha,86
+Ravi,91"""
+df = pd.read_csv(StringIO(csv_data))
+print(df)`,
+  ),
+  pandasFormatProgram(
+    'Write a CSV File',
+    'Export a DataFrame to comma-separated text with to_csv.',
+    'DataFrame.to_csv()',
+    `import pandas as pd
+from io import StringIO
+
+df = pd.DataFrame({"name": ["Asha", "Ravi"], "score": [86, 91]})
+csv_file = StringIO()
+df.to_csv(csv_file, index=False)
+print(csv_file.getvalue())`,
+  ),
+  pandasFormatProgram(
+    'Read an Excel Workbook',
+    'Load worksheet data from an Excel file with read_excel. Excel support requires an engine such as openpyxl.',
+    'pd.read_excel()',
+    `import pandas as pd
+
+# Place students.xlsx in the working directory.
+df = pd.read_excel("students.xlsx", sheet_name="Sheet1")
+print(df.head())`,
+  ),
+  pandasFormatProgram(
+    'Write an Excel Workbook',
+    'Save DataFrame data to an Excel worksheet with to_excel. Excel support requires an engine such as openpyxl.',
+    'DataFrame.to_excel()',
+    `import pandas as pd
+
+df = pd.DataFrame({"name": ["Asha", "Ravi"], "score": [86, 91]})
+df.to_excel("students.xlsx", index=False, sheet_name="Scores")
+print("Workbook saved")`,
+  ),
+  pandasFormatProgram(
+    'Read JSON Records',
+    'Parse JSON records into tabular data with read_json.',
+    'pd.read_json()',
+    `import pandas as pd
+from io import StringIO
+
+json_data = '[{"name":"Asha","score":86},{"name":"Ravi","score":91}]'
+df = pd.read_json(StringIO(json_data))
+print(df)`,
+  ),
+  pandasFormatProgram(
+    'Write JSON Records',
+    'Serialize a DataFrame as JSON records with to_json.',
+    'DataFrame.to_json()',
+    `import pandas as pd
+
+df = pd.DataFrame({"name": ["Asha", "Ravi"], "score": [86, 91]})
+json_text = df.to_json(orient="records", indent=2)
+print(json_text)`,
+  ),
+  pandasFormatProgram(
+    'Read an HTML Table',
+    'Extract tables from HTML markup with read_html. This needs an HTML parser such as lxml.',
+    'pd.read_html()',
+    `import pandas as pd
+from io import StringIO
+
+html = """<table><tr><th>name</th><th>score</th></tr>
+<tr><td>Asha</td><td>86</td></tr></table>"""
+tables = pd.read_html(StringIO(html))
+print(tables[0])`,
+  ),
+  pandasFormatProgram(
+    'Read Data from SQLite',
+    'Load query results from a SQLite database into a DataFrame.',
+    'pd.read_sql_query()',
+    `import pandas as pd
+import sqlite3
+
+connection = sqlite3.connect(":memory:")
+connection.execute("CREATE TABLE scores (name TEXT, score INTEGER)")
+connection.executemany("INSERT INTO scores VALUES (?, ?)", [("Asha", 86), ("Ravi", 91)])
+df = pd.read_sql_query("SELECT * FROM scores", connection)
+print(df)
+connection.close()`,
+  ),
+  pandasFormatProgram(
+    'Write Data to SQLite',
+    'Store DataFrame rows in a SQLite table with to_sql.',
+    'DataFrame.to_sql()',
+    `import pandas as pd
+import sqlite3
+
+df = pd.DataFrame({"name": ["Asha", "Ravi"], "score": [86, 91]})
+connection = sqlite3.connect(":memory:")
+df.to_sql("scores", connection, index=False, if_exists="replace")
+print(pd.read_sql_query("SELECT * FROM scores", connection))
+connection.close()`,
+  ),
+  pandasFormatProgram(
+    'Read JSON Lines',
+    'Load newline-delimited JSON records using read_json with lines enabled.',
+    'pd.read_json(lines=True)',
+    `import pandas as pd
+from io import StringIO
+
+json_lines = '{"name":"Asha","score":86}\\n{"name":"Ravi","score":91}'
+df = pd.read_json(StringIO(json_lines), lines=True)
+print(df)`,
+  ),
+]
+
+const webApiPrograms: ExperimentSection[] = [
+  pandasFormatProgram(
+    'Send a GET Request',
+    'Request JSON data from a public web API and inspect the HTTP response.',
+    'urllib.request.urlopen()',
+    `import json
+from urllib.request import urlopen
+
+url = "https://jsonplaceholder.typicode.com/users/1"
+with urlopen(url) as response:
+    user = json.load(response)
+
+print("Name:", user["name"])
+print("Email:", user["email"])`,
+  ),
+  pandasFormatProgram(
+    'Request API Data with Query Parameters',
+    'Build a URL with query parameters and retrieve a filtered API response.',
+    'urllib.parse.urlencode()',
+    `import json
+from urllib.parse import urlencode
+from urllib.request import urlopen
+
+params = urlencode({"userId": 1})
+url = f"https://jsonplaceholder.typicode.com/posts?{params}"
+with urlopen(url) as response:
+    posts = json.load(response)
+
+print("Posts returned:", len(posts))
+print("First title:", posts[0]["title"])`,
+  ),
+  pandasFormatProgram(
+    'Convert API JSON to a DataFrame',
+    'Normalize a list of JSON objects returned by an API into a Pandas DataFrame.',
+    'pd.json_normalize()',
+    `import json
+import pandas as pd
+from urllib.request import urlopen
+
+url = "https://jsonplaceholder.typicode.com/users"
+with urlopen(url) as response:
+    users = json.load(response)
+
+users_df = pd.json_normalize(users)
+print(users_df[["id", "name", "email"]].head())`,
+  ),
+]
+
+const dataCleaningPrograms: ExperimentSection[] = [
+  pandasFormatProgram(
+    'Inspect and Select Data',
+    'Inspect a DataFrame and select the rows and columns needed for analysis.',
+    'DataFrame.head()\nDataFrame.info()\nDataFrame.loc[]',
+    `import pandas as pd
+
+df = pd.DataFrame({
+    "name": ["Asha", "Ravi", "Mina"],
+    "score": [86, None, 92],
+    "city": ["North", "South", "North"],
+})
+print(df.head())
+print("Missing values:")
+print(df.isna().sum())
+print(df[["name", "score"]])`,
+  ),
+  pandasFormatProgram(
+    'Handle Missing Values',
+    'Fill missing numeric values and remove rows that still have incomplete fields.',
+    'DataFrame.fillna()\nDataFrame.dropna()',
+    `import pandas as pd
+
+df = pd.DataFrame({"score": [86, None, 92, 78]})
+df["score"] = df["score"].fillna(df["score"].mean())
+print(df)
+print("Missing values remaining:", int(df.isna().sum().sum()))`,
+  ),
+  pandasFormatProgram(
+    'Remove Duplicates and Normalize Text',
+    'Remove duplicate records and standardize text values before analysis.',
+    'DataFrame.drop_duplicates()\nSeries.str.strip()',
+    `import pandas as pd
+
+df = pd.DataFrame({
+    "name": [" Asha ", "Ravi", " Asha "],
+    "score": [86, 91, 86],
+})
+df["name"] = df["name"].str.strip().str.title()
+cleaned = df.drop_duplicates().reset_index(drop=True)
+print(cleaned)`,
+  ),
+]
+
 export const defaultExperiment: Experiment = {
   id: 'time-series-analysis',
   number: 1,
-  title: 'Time Series Analysis',
+  title: 'Different Data Formats Using Pandas',
   description:
-    'Time Series Analysis in Pandas deals with organizing, manipulating and analyzing data based on time.',
+    'Practice reading and writing common data formats with Pandas, including CSV, Excel, JSON, HTML, SQL, Parquet, and fixed-width text.',
   thumbnail:
     'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
   youtubeUrl: 'https://www.youtube.com/watch?v=E5W4Lvl0Ar0',
   githubUrl: 'https://github.com/',
-  aim: 'To understand and implement time-series data analysis using Python and Pandas.',
+  aim: 'To understand how Pandas imports and exports data across common file and database formats.',
   objective:
-    'To explore date parsing, timestamp indexing, and frequency-based time-series operations for analytical research workflows.',
-  topics: ['Datetime', 'Timestamp', 'Date Range', 'Time Series', 'Periods', 'Time Zones', 'Resampling'],
-  syntax: 'pd.to_datetime()\npd.Series()\npd.date_range()',
+    'Use Pandas readers and writers to move data between DataFrames, text formats, workbooks, HTML tables, and SQLite.',
+  topics: ['Pandas', 'CSV', 'Excel', 'JSON', 'HTML', 'SQL', 'Parquet', 'Data Formats'],
+  syntax: 'pd.read_csv()\npd.read_json()\npd.read_excel()\nDataFrame.to_csv()\nDataFrame.to_json()',
   program: `import pandas as pd
+from io import StringIO
 
-# Create time-indexed data
-series_dates = pd.to_datetime([
-    "2024-01-01 00:00:00",
-    "2024-01-01 01:00:00",
-    "2024-01-01 02:00:00",
-    "2024-01-01 03:00:00",
-    "2024-01-01 04:00:00",
-])
-
-values = [10, 15, 12, 18, 20]
-series = pd.Series(values, index=series_dates)
-print(series)
-print(series.resample('2H').mean())`,
+csv_data = """name,score
+Asha,86
+Ravi,91"""
+df = pd.read_csv(StringIO(csv_data))
+print(df)
+print(df.to_json(orient="records"))`,
   experimentA: {
     title: 'Create Time Series Using Datetime',
     description: 'Create a timestamp-indexed time series using Python datetime objects and Pandas.',
@@ -86,26 +306,49 @@ print(dates)`,
     youtubeUrl: '',
     githubUrl: '',
   },
+  subPrograms: dataFormatPrograms,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 }
 
 export const additionalExperiments: Experiment[] = [
   {
-    id: 'data-cleaning-missing-values',
+    id: 'web-api-interaction',
     number: 2,
-    title: 'Data Cleaning and Missing Values',
+    title: 'Interacting with Web APIs',
     description:
-      'Prepare a small dataset for analysis by identifying missing values, filling them with suitable values, and removing duplicate records.',
+      'Retrieve structured data from web APIs, work with request parameters, and convert JSON responses into analysis-ready tables.',
     thumbnail:
       'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
     youtubeUrl: '',
     githubUrl: '',
-    aim: 'To learn basic data-quality checks and cleaning techniques using Python.',
+    aim: 'To learn how to request data from web APIs and prepare JSON responses for analysis.',
     objective:
-      'Inspect a dataset for incomplete and duplicate records, apply a consistent cleaning strategy, and compare the dataset before and after cleaning.',
-    topics: ['Data Cleaning', 'Missing Values', 'Duplicates', 'Data Quality'],
-    syntax: 'row.get()\nlist comprehension\nset()',
+      'Send GET requests, pass query parameters, inspect JSON responses, and normalize API records into a Pandas DataFrame.',
+    topics: ['Web APIs', 'HTTP GET', 'JSON', 'urllib', 'Pandas'],
+    syntax: 'urlopen()\njson.load()\nurlencode()\npd.json_normalize()',
+    program: webApiPrograms[0].program,
+    experimentA: webApiPrograms[0],
+    experimentB: webApiPrograms[1],
+    subPrograms: webApiPrograms,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'data-cleaning-missing-values',
+    number: 3,
+    title: 'Data Cleaning and Preparation',
+    description:
+      'Prepare a dataset for analysis by inspecting its structure, handling missing values, standardizing fields, and removing duplicate records.',
+    thumbnail:
+      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+    youtubeUrl: '',
+    githubUrl: '',
+    aim: 'To prepare raw data for reliable analysis with Pandas data-quality and cleaning operations.',
+    objective:
+      'Inspect a DataFrame, handle missing values, standardize text, and remove duplicate records.',
+    topics: ['Data Cleaning', 'Data Preparation', 'Missing Values', 'Duplicates', 'Pandas'],
+    syntax: 'DataFrame.isna()\nDataFrame.fillna()\nDataFrame.drop_duplicates()',
     program: `students = [
     {"name": "Asha", "score": 86},
     {"name": "Ravi", "score": None},
@@ -162,12 +405,13 @@ print("Cleaned scores:", [round(score, 2) for score in cleaned])`,
       youtubeUrl: '',
       githubUrl: '',
     },
+    subPrograms: dataCleaningPrograms,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
   {
     id: 'descriptive-statistics',
-    number: 3,
+    number: 4,
     title: 'Descriptive Statistics',
     description:
       'Summarize a dataset using measures of central tendency and spread, including mean, median, range, and standard deviation.',
@@ -225,7 +469,7 @@ print("Population standard deviation:", round(spread, 2))`,
   },
   {
     id: 'correlation-analysis',
-    number: 4,
+    number: 5,
     title: 'Correlation Analysis',
     description:
       'Measure the direction and strength of the relationship between two numerical variables using Pearson correlation.',
@@ -291,7 +535,7 @@ print("Positive association" if r > 0 else "Negative association")`,
   },
   {
     id: 'exploratory-data-analysis',
-    number: 5,
+    number: 6,
     title: 'Exploratory Data Analysis',
     description:
       'Explore a small dataset by checking its structure, summarizing numeric values, counting categories, and identifying data-quality issues before modeling.',
@@ -357,7 +601,7 @@ print("Missing values:", missing)`,
   },
   {
     id: 'simple-linear-regression',
-    number: 6,
+    number: 7,
     title: 'Simple Linear Regression',
     description:
       'Fit a simple least-squares line to paired observations and use it to make a basic prediction while discussing residuals and limitations.',

@@ -38,6 +38,7 @@ export type Experiment = {
   program: string
   experimentA: ExperimentSection
   experimentB: ExperimentSection
+  subPrograms?: ExperimentSection[]
   createdAt: string
   updatedAt: string
 }

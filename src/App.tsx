@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   BarChart3,
   BookOpen,
   Check,
   Code2,
-  Copy,
-  Database,
   Download,
   Edit,
   ExternalLink,
@@ -23,7 +21,7 @@ import {
   User,
   X,
 } from 'lucide-react'
-import { defaultExperiments, defaultProfile } from './data/defaults'
+import { defaultExperiment, defaultExperiments, defaultProfile } from './data/defaults'
 import moduleGuides from './data/module-guides.json'
 import type { Experiment, StudentProfile } from './types'
 
@@ -65,28 +63,32 @@ type ExperimentFormState = {
 
 type IndividualExperiment = {
   experiment: Experiment
-  type: 'a' | 'b'
-  number: number
+  type: string
+  number: string
   section: Experiment['experimentA']
 }
+
+const publicAsset = (path: string) => `${import.meta.env.BASE_URL}${path}`
+
+const getSubPrograms = (experiment: Experiment) =>
+  experiment.subPrograms?.length
+    ? experiment.subPrograms
+    : [experiment.experimentA, experiment.experimentB]
 
 const listIndividualExperiments = (experiments: Experiment[]): IndividualExperiment[] =>
   [...experiments]
     .sort((a, b) => a.number - b.number)
-    .flatMap((experiment, index) => [
-      {
-        experiment,
-        type: 'a' as const,
-        number: index * 2 + 1,
-        section: experiment.experimentA,
-      },
-      {
-        experiment,
-        type: 'b' as const,
-        number: index * 2 + 2,
-        section: experiment.experimentB,
-      },
-    ])
+    .flatMap((experiment) =>
+      getSubPrograms(experiment).map((section, index) => {
+        const type = String.fromCharCode(97 + index)
+        return {
+          experiment,
+          type,
+          number: `${experiment.number}${type}`,
+          section,
+        }
+      }),
+    )
 
 const loadExperiments = (): Experiment[] => {
   const saved = readStorage<Experiment[] | null>(STORAGE_KEYS.experiments, null)
@@ -95,21 +97,48 @@ const loadExperiments = (): Experiment[] => {
   }
 
   const seedVersion = readStorage<number>(STORAGE_KEYS.experimentSeedVersion, 0)
-  if (seedVersion >= 3) {
+  if (seedVersion >= 5) {
     return saved
   }
 
   const savedIds = new Set(saved.map((experiment) => experiment.id))
-  const additions = defaultExperiments.filter((experiment) => !savedIds.has(experiment.id))
-  const lastNumber = saved.reduce((max, experiment) => Math.max(max, experiment.number), 0)
+  const defaultById = new Map(defaultExperiments.map((experiment) => [experiment.id, experiment]))
+  const migrated = saved.map((experiment) => {
+    const defaultValue = defaultById.get(experiment.id)
+    if (!defaultValue) {
+      return experiment
+    }
 
-  writeStorage(STORAGE_KEYS.experimentSeedVersion, 3)
+    if (experiment.id === defaultExperiment.id || defaultValue.subPrograms) {
+      return {
+        ...experiment,
+        number: defaultValue.number,
+        title: defaultValue.title,
+        description: defaultValue.description,
+        aim: defaultValue.aim,
+        objective: defaultValue.objective,
+        topics: defaultValue.topics,
+        syntax: defaultValue.syntax,
+        program: defaultValue.program,
+        subPrograms: defaultValue.subPrograms,
+      }
+    }
+
+    return { ...experiment, number: defaultValue.number }
+  })
+  const additions = defaultExperiments.filter((experiment) => !savedIds.has(experiment.id))
+  let lastNumber = migrated.reduce((max, experiment) => Math.max(max, experiment.number), 0)
+  const numberedAdditions = additions.map((experiment) => {
+    const number = migrated.some((savedExperiment) => savedExperiment.number === experiment.number)
+      ? ++lastNumber
+      : experiment.number
+    return { ...experiment, number }
+  })
+
+  writeStorage(STORAGE_KEYS.experimentSeedVersion, 5)
   return [
-    ...saved,
-    ...additions.map((experiment, index) => ({
-      ...experiment,
-      number: lastNumber + index + 1,
-    })),
+    ...migrated,
+    ...numberedAdditions,
   ]
 }
 
@@ -136,6 +165,21 @@ const writeStorage = <T,>(key: string, value: T) => {
     localStorage.setItem(key, JSON.stringify(value))
   } catch {
     // ignore write failures in restricted browser contexts
+  }
+}
+
+const loadProfile = (): StudentProfile => {
+  const saved = readStorage<StudentProfile | null>(STORAGE_KEYS.studentProfile, null)
+  if (!saved) {
+    return defaultProfile
+  }
+
+  return {
+    ...saved,
+    rollNo: saved.rollNo === 'DS-2024-017' ? defaultProfile.rollNo : saved.rollNo,
+    photo: saved.photo.startsWith('https://images.unsplash.com/photo-1500648767791-00dcc994a43e')
+      ? defaultProfile.photo
+      : saved.photo,
   }
 }
 
@@ -261,6 +305,7 @@ const buildExperiment = (form: ExperimentFormState, existing?: Experiment): Expe
     youtubeUrl: form.experimentB.youtubeUrl.trim(),
     githubUrl: form.experimentB.githubUrl.trim(),
   },
+  subPrograms: existing?.subPrograms,
   createdAt: existing?.createdAt ?? new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 })
@@ -269,9 +314,7 @@ function App() {
   const [experiments, setExperiments] = useState<Experiment[]>(() =>
     loadExperiments(),
   )
-  const [profile, setProfile] = useState<StudentProfile>(() =>
-    readStorage(STORAGE_KEYS.studentProfile, defaultProfile),
-  )
+  const [profile, setProfile] = useState<StudentProfile>(loadProfile)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const [isExperimentModalOpen, setIsExperimentModalOpen] = useState(false)
@@ -325,11 +368,26 @@ function App() {
     showToast('Experiment updated successfully.')
   }
 
-  const handleSaveExperimentProgram = (id: string, type: 'a' | 'b', program: string) => {
+  const handleSaveExperimentProgram = (id: string, type: string, program: string) => {
     setExperiments((current) =>
       current.map((experiment) => {
         if (experiment.id !== id) {
           return experiment
+        }
+
+        if (experiment.subPrograms?.length) {
+          const programIndex = type.charCodeAt(0) - 97
+          if (programIndex < 0 || programIndex >= experiment.subPrograms.length) {
+            return experiment
+          }
+
+          return {
+            ...experiment,
+            subPrograms: experiment.subPrograms.map((section, index) =>
+              index === programIndex ? { ...section, program } : section,
+            ),
+            updatedAt: new Date().toISOString(),
+          }
         }
 
         const sectionKey = type === 'a' ? 'experimentA' : 'experimentB'
@@ -401,25 +459,6 @@ function App() {
                 experiments={experiments}
                 onDeleteExperiment={(id) => setDeleteTargetId(id)}
                 onEditExperiment={openEditExperiment}
-              />
-            }
-          />
-          <Route
-            path="/experiment/:id/a"
-            element={
-              <SubExperimentPage
-                experiments={experiments}
-                type="a"
-                onSaveProgram={handleSaveExperimentProgram}
-              />
-            }
-          />
-          <Route
-            path="/experiment/:id/b"
-            element={
-              <SubExperimentPage
-                experiments={experiments}
-                type="b"
                 onSaveProgram={handleSaveExperimentProgram}
               />
             }
@@ -479,37 +518,34 @@ function Header() {
             <FlaskConical className="h-6 w-6" />
           </div>
           <div>
-            <div className="text-2xl font-bold tracking-tight text-[#0B1F3A] lg:text-[2rem]">Data Science Subject Laboratory</div>
+            <div className="text-2xl font-bold tracking-tight text-[#0B1F3A] lg:text-[2rem]">Data Science Digital Library</div>
             <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-slate-500 md:text-[0.78rem]">
               Experiments & Projects
             </p>
           </div>
         </Link>
         <img
-          src="/mbu-logo.png"
+          src={publicAsset('mbu-logo.png')}
           alt="Mohan Babu University"
           className="h-12 w-[4.8rem] shrink-0 rounded-lg border border-slate-200 bg-white object-contain p-1 shadow-sm sm:h-14 sm:w-[5.6rem]"
         />
-        <nav aria-label="Main navigation" className="order-3 flex w-full flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-100 pt-3 text-sm font-medium text-slate-600">
-          <Link to="/" className="transition hover:text-[#0B1F3A]">
-            Start
+        <nav aria-label="Main navigation" className="order-3 flex w-full flex-col items-stretch gap-1 border-t border-slate-100 pt-3 text-sm font-medium text-slate-600">
+          <Link to="/" className="py-1 transition hover:text-[#0B1F3A]">
+            Home
           </Link>
-          <Link to="/modules" className="transition hover:text-[#0B1F3A]">
+          <Link to="/modules" className="py-1 transition hover:text-[#0B1F3A]">
             Modules
           </Link>
-          <Link to="/experiments" className="transition hover:text-[#0B1F3A]">
+          <Link to="/experiments" className="py-1 transition hover:text-[#0B1F3A]">
             Experiments
           </Link>
-          <Link to="/code" className="transition hover:text-[#0B1F3A]">
-            Code
-          </Link>
-          <Link to="/tools" className="transition hover:text-[#0B1F3A]">
+          <Link to="/tools" className="py-1 transition hover:text-[#0B1F3A]">
             Tools
           </Link>
-          <Link to="/resources" className="transition hover:text-[#0B1F3A]">
+          <Link to="/resources" className="py-1 transition hover:text-[#0B1F3A]">
             Resources
           </Link>
-          <Link to="/about" className="transition hover:text-[#0B1F3A]">
+          <Link to="/about" className="py-1 transition hover:text-[#0B1F3A]">
             About
           </Link>
         </nav>
@@ -528,7 +564,7 @@ function StudentProfileCard({
   compact?: boolean
 }) {
   return (
-    <div className={`relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.04)] ${compact ? 'w-full max-w-[420px]' : 'w-full'}`}>
+    <div className={`relative overflow-hidden rounded-2xl border border-[#B9E4E1] bg-gradient-to-br from-[#E8F6F5] to-[#D8EEEF] shadow-[0_8px_24px_rgba(15,75,90,0.1)] ${compact ? 'w-full max-w-[420px]' : 'w-full'}`}>
       <div className="flex items-center gap-4 p-4">
         <div className="relative h-20 w-20 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
           {profile.photo ? (
@@ -556,7 +592,7 @@ function StudentProfileCard({
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 border-t border-slate-200 bg-slate-50/80 px-4 py-3 text-xs text-slate-600">
+      <div className="grid grid-cols-2 gap-3 border-t border-[#B9E4E1] bg-white/45 px-4 py-3 text-xs text-slate-600">
         <div>
           <p className="text-slate-500">Roll No</p>
           <p className="mt-1 font-medium text-[#102033]">{profile.rollNo || 'XXXXXXXX'}</p>
@@ -639,18 +675,18 @@ function StartPage({
   return (
     <section className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]">
       <div className="space-y-4">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_4px_20px_rgba(15,23,42,0.04)] md:p-8">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.25em] text-[#0EA5A8]">Academic Year 2026–2027 · Data Science Subject Laboratory</p>
-          <h1 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-[#102033] md:text-4xl">
+        <div className="rounded-[28px] border border-[#1C6875] bg-gradient-to-br from-[#0B1F3A] via-[#123B5A] to-[#0B777B] p-6 text-white shadow-[0_12px_32px_rgba(11,31,58,0.2)] md:p-8">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.25em] text-teal-200">Academic Year 2026–2027 · Data Science Digital Library</p>
+          <h1 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-white md:text-4xl">
             Experiments, Analysis & Learning
           </h1>
-          <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
+          <p className="mt-3 max-w-2xl text-base leading-7 text-slate-200">
             Build practical data science skills through guided experiments and project work: prepare real-world data,
             write Python programs, apply analytical methods, and communicate insights clearly.
           </p>
           <div className="mt-4 flex flex-wrap gap-2" aria-label="Data Science Laboratory learning areas">
             {['Python', 'Data Preparation', 'Analysis', 'Visualization', 'Projects'].map((area) => (
-              <span key={area} className="rounded-full border border-[#0EA5A8]/20 bg-[#0EA5A8]/5 px-3 py-1.5 text-xs font-medium text-[#163B63]">
+              <span key={area} className="rounded-full border border-teal-200/30 bg-white/10 px-3 py-1.5 text-xs font-medium text-teal-50">
                 {area}
               </span>
             ))}
@@ -659,19 +695,11 @@ function StartPage({
             <Link to="/experiments" className="inline-flex items-center gap-2 rounded-xl bg-[#0EA5A8] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0B8F92]">
               <BookOpen className="h-4 w-4" /> Explore Experiments
             </Link>
-            <Link to="/modules" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-[#0B1F3A] transition hover:bg-slate-50">
+            <Link to="/modules" className="inline-flex items-center gap-2 rounded-xl border border-white/35 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20">
               View Modules <ArrowLeft className="h-4 w-4 rotate-180" />
             </Link>
           </div>
         </div>
-        <section aria-label="Data Science Lab visuals" className="grid grid-cols-2 gap-3">
-          <div className="flex h-36 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-            <img src="/data-science-lab.png" alt="Data Science Subject Laboratory" className="h-full w-full object-contain" />
-          </div>
-          <div className="flex h-36 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-            <img src="/lab-applications.png" alt="Diagram of data science subject laboratory applications" className="h-full w-full object-contain" />
-          </div>
-        </section>
       </div>
       <StudentProfileCard profile={profile} onEdit={onEditProfile} />
     </section>
@@ -683,7 +711,7 @@ function ModulesPage() {
     <section className="space-y-6">
       <div>
         <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[#0EA5A8]">Course Outline · 2026–2027</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#102033] md:text-4xl">Data Science Subject Laboratory Modules</h1>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#102033] md:text-4xl">Data Science Digital Library Modules</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
           Each module now includes six presentation pages of study matter and a matching six-page PDF guide.
         </p>
@@ -700,7 +728,7 @@ function ModulesPage() {
               <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">{module.overview}</p>
             </div>
             <a
-              href={`/module-guides/module-${module.number}-${module.slug}.pdf`}
+              href={publicAsset(`module-guides/module-${module.number}-${module.slug}.pdf`)}
               download
               className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-[#0B1F3A] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#163B63] sm:self-center"
             >
@@ -742,7 +770,7 @@ function CodePage() {
   return (
     <section className="space-y-5">
       <div>
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[#0EA5A8]">Data Science Subject Laboratory</p>
+        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[#0EA5A8]">Data Science Digital Library</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#102033] md:text-4xl">Python Code Editor</h1>
         <p className="mt-2 text-sm text-slate-500">Write Python and run it safely in your browser. The first run downloads the Python runtime.</p>
       </div>
@@ -755,15 +783,19 @@ function CodePage() {
 
 function PythonCodeEditor({
   initialCode,
+  persistedCode,
   onSave,
+  onChange,
   editorLabel = 'editor.py',
 }: {
   initialCode: string
+  persistedCode?: string
   onSave?: (code: string) => void
+  onChange?: (code: string) => void
   editorLabel?: string
 }) {
   const [code, setCode] = useState(initialCode)
-  const [savedCode, setSavedCode] = useState(initialCode)
+  const [savedCode, setSavedCode] = useState(persistedCode ?? initialCode)
   const [output, setOutput] = useState('')
   const [saveMessage, setSaveMessage] = useState('')
   const [runState, setRunState] = useState<'idle' | 'loading' | 'running'>('idle')
@@ -783,7 +815,7 @@ function PythonCodeEditor({
       window.clearTimeout(timeoutRef.current)
     }
 
-    const worker = new Worker('/python-runner.js')
+    const worker = new Worker(publicAsset('python-runner.js'))
     workerRef.current = worker
     setOutput('Starting Python runtime… The first run needs an internet connection to load Python.')
     setRunState('loading')
@@ -868,6 +900,7 @@ function PythonCodeEditor({
         value={code}
         onChange={(event) => {
           setCode(event.target.value)
+          onChange?.(event.target.value)
           setSaveMessage('')
         }}
         spellCheck={false}
@@ -968,7 +1001,7 @@ function AboutPage() {
         <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[#0EA5A8]">About the laboratory</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#102033] md:text-4xl">Learn Data Science by Doing</h1>
         <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
-          The Data Science Subject Laboratory supports hands-on learning through structured modules, practical experiments,
+          The Data Science Digital Library supports hands-on learning through structured modules, practical experiments,
           Python programming, and clear communication of analytical results.
         </p>
       </div>
@@ -1141,8 +1174,8 @@ function IndividualExperimentCard({
 }: {
   experiment: Experiment
   section: Experiment['experimentA']
-  type: 'a' | 'b'
-  number: number
+  type: string
+  number: string
   onEdit: (experiment: Experiment) => void
   onDelete: (id: string) => void
 }) {
@@ -1154,7 +1187,7 @@ function IndividualExperimentCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-[#0EA5A8]">
-            Experiment {String(number).padStart(2, '0')}
+            Experiment {number}
           </p>
           <h3 className="mt-1 text-xl font-semibold text-[#102033]">{section.title}</h3>
           <p className="mt-1 text-xs font-medium text-slate-500">Part of: {experiment.title}</p>
@@ -1215,10 +1248,10 @@ function IndividualExperimentCard({
       <div className="mt-5 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => navigate(`/experiment/${experiment.id}/${type}`)}
+          onClick={() => navigate(`/experiment/${experiment.id}?program=${type}`)}
           className="inline-flex items-center gap-2 rounded-xl bg-[#0B1F3A] px-3.5 py-2.5 text-sm font-medium text-white transition hover:bg-[#102033]"
         >
-          Open Experiment {String(number).padStart(2, '0')}
+          Open Experiment {number}
         </button>
         <button
           type="button"
@@ -1236,38 +1269,34 @@ function ExperimentDetailsPage({
   experiments,
   onEditExperiment,
   onDeleteExperiment,
+  onSaveProgram,
 }: {
   experiments: Experiment[]
   onEditExperiment: (experiment: Experiment) => void
   onDeleteExperiment: (id: string) => void
+  onSaveProgram: (id: string, type: string, program: string) => void
 }) {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [copied, setCopied] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [programDrafts, setProgramDrafts] = useState<Record<string, string>>({})
 
   const experiment = experiments.find((item) => item.id === id)
-
-  useEffect(() => {
-    if (!copied) {
-      return undefined
-    }
-
-    const timer = window.setTimeout(() => setCopied(false), 1500)
-    return () => window.clearTimeout(timer)
-  }, [copied])
 
   if (!experiment) {
     return <NotFoundPage />
   }
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(experiment.program)
-      setCopied(true)
-    } catch {
-      setCopied(false)
-    }
-  }
+  const subPrograms = getSubPrograms(experiment)
+  const requestedType = searchParams.get('program') ?? 'a'
+  const requestedIndex = requestedType.charCodeAt(0) - 97
+  const selectedProgramIndex =
+    requestedIndex >= 0 && requestedIndex < subPrograms.length ? requestedIndex : 0
+  const safeProgramIndex = Math.min(selectedProgramIndex, subPrograms.length - 1)
+  const selectedProgram = subPrograms[safeProgramIndex]
+  const selectedType = String.fromCharCode(97 + safeProgramIndex)
+  const selectedNumber = `${experiment.number}${selectedType}`
+  const editorCode = programDrafts[selectedType] ?? selectedProgram.program
 
   return (
     <div className="space-y-8 pb-8">
@@ -1375,165 +1404,57 @@ function ExperimentDetailsPage({
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_4px_20px_rgba(15,23,42,0.03)] md:p-7">
-        <div className="mb-5 flex items-center gap-2 text-[#0EA5A8]">
-          <Database className="h-4 w-4" />
-          <h2 className="text-2xl font-bold text-[#102033]">Sub-Experiments</h2>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <SubExperimentMiniCard title={experiment.experimentA.title} description={experiment.experimentA.description} to={`/experiment/${experiment.id}/a`} />
-          <SubExperimentMiniCard title={experiment.experimentB.title} description={experiment.experimentB.description} to={`/experiment/${experiment.id}/b`} />
-        </div>
-      </section>
-
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_4px_20px_rgba(15,23,42,0.03)] md:p-7">
-        <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex items-center gap-2 text-[#0EA5A8]">
             <Code2 className="h-4 w-4" />
-            <h2 className="text-2xl font-bold text-[#102033]">Main To Do & Program</h2>
+            <h2 className="text-2xl font-bold text-[#102033]">Experiment Code Editor</h2>
           </div>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-          >
-            {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copied!' : 'Copy code'}
-          </button>
+          <label className="block w-full sm:max-w-sm">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">Choose a subprogram</span>
+            <select
+              value={safeProgramIndex}
+              onChange={(event) => {
+                const index = Number(event.target.value)
+                setSearchParams(
+                  { program: String.fromCharCode(97 + index) },
+                  { replace: true },
+                )
+              }}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#0EA5A8] focus:ring-2 focus:ring-[#0EA5A8]/20"
+            >
+              {subPrograms.map((subProgram, index) => (
+                <option key={`${experiment.id}-${index}`} value={index}>
+                  {experiment.number}{String.fromCharCode(97 + index)} · {subProgram.title}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div className="space-y-5">
           <div className="rounded-[20px] border border-slate-200 bg-slate-50 p-4">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Aim</p>
-            <p className="mt-2 text-slate-700">{experiment.aim}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0B8F92]">Program {selectedNumber}</p>
+            <h3 className="mt-1 text-xl font-semibold text-[#102033]">{selectedProgram.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{selectedProgram.description}</p>
+            {selectedProgram.aim && <p className="mt-2 text-sm text-slate-700"><strong>Aim:</strong> {selectedProgram.aim}</p>}
+            {selectedProgram.syntax && <pre className="mt-2 whitespace-pre-wrap font-mono text-sm leading-6 text-slate-600">{selectedProgram.syntax}</pre>}
           </div>
 
-          <div className="rounded-[20px] border border-slate-200 bg-slate-50 p-4">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Syntax</p>
-            <pre className="mt-2 whitespace-pre-wrap font-mono text-sm leading-6 text-slate-700">{experiment.syntax}</pre>
-          </div>
-
-          <div className="rounded-[20px] border border-slate-200 bg-[#0B1F3A] p-4 text-slate-100">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-300">Program</p>
-            <pre className="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-sm leading-6 text-slate-100">{experiment.program}</pre>
-          </div>
+          <PythonCodeEditor
+            key={`${experiment.id}-${selectedType}`}
+            initialCode={editorCode}
+            persistedCode={selectedProgram.program}
+            editorLabel={`experiment-${selectedNumber}.py`}
+            onChange={(program) => setProgramDrafts((current) => ({ ...current, [selectedType]: program }))}
+            onSave={(program) => onSaveProgram(experiment.id, selectedType, program)}
+          />
 
           <div className="rounded-[20px] border border-slate-200 bg-slate-50 p-4">
             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Output</p>
-            <p className="mt-2 text-slate-700">{experiment.experimentA.output || 'Results will be summarized here in the workflow.'}</p>
+            <p className="mt-2 text-slate-700">{selectedProgram.output || 'Run the program to see its output in the editor.'}</p>
           </div>
         </div>
       </section>
-    </div>
-  )
-}
-
-function SubExperimentMiniCard({ title, description, to }: { title: string; description: string; to: string }) {
-  const navigate = useNavigate()
-
-  return (
-    <div className="rounded-[20px] border border-slate-200 bg-slate-50 p-4 shadow-sm">
-      <h3 className="text-xl font-semibold text-[#102033]">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
-      <button
-        type="button"
-        onClick={() => navigate(to)}
-        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#0EA5A8] px-3.5 py-2.5 text-sm font-medium text-white transition hover:bg-[#0B8F92]"
-      >
-        Open
-      </button>
-    </div>
-  )
-}
-
-function SubExperimentPage({
-  experiments,
-  type,
-  onSaveProgram,
-}: {
-  experiments: Experiment[]
-  type: 'a' | 'b'
-  onSaveProgram: (id: string, type: 'a' | 'b', program: string) => void
-}) {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const individualExperiment = listIndividualExperiments(experiments).find(
-    (item) => item.experiment.id === id && item.type === type,
-  )
-
-  if (!individualExperiment) {
-    return <NotFoundPage />
-  }
-
-  const { experiment, section: subExperiment, number } = individualExperiment
-
-  return (
-    <div className="space-y-6 pb-10">
-      <button
-        type="button"
-        onClick={() => navigate('/experiments')}
-        className="inline-flex items-center gap-2 text-sm font-medium text-[#163B63] transition hover:text-[#0B1F3A]"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back to all experiments
-      </button>
-
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_4px_20px_rgba(15,23,42,0.03)] md:p-7">
-        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-slate-500">
-          Experiment {String(number).padStart(2, '0')}
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#102033] md:text-5xl">{subExperiment.title}</h1>
-        <p className="mt-2 text-sm font-medium text-slate-500">Part of: {experiment.title}</p>
-        <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">{subExperiment.description}</p>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-2">
-        <InfoCard title="Aim" content={subExperiment.aim} />
-        <InfoCard title="Syntax" content={subExperiment.syntax} />
-        <InfoCard title="Output" content={subExperiment.output} />
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-2xl font-bold text-[#102033]">Code editor</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Edit, run, and save this experiment&apos;s Python program here.
-          </p>
-        </div>
-        <PythonCodeEditor
-          key={`${experiment.id}-${type}`}
-          initialCode={subExperiment.program}
-          editorLabel={`experiment-${String(number).padStart(2, '0')}.py`}
-          onSave={(program) => onSaveProgram(experiment.id, type, program)}
-        />
-      </section>
-
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_4px_20px_rgba(15,23,42,0.03)] md:p-7">
-        <div className="flex flex-wrap gap-3">
-          {subExperiment.githubUrl && (
-            <a href={normaliseUrl(subExperiment.githubUrl)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-[#0B1F3A] px-3.5 py-2.5 text-sm font-medium text-white transition hover:bg-[#102033]">
-              <GitBranch className="h-4 w-4" /> GitHub
-            </a>
-          )}
-          {subExperiment.youtubeUrl && (
-            <a href={normaliseUrl(subExperiment.youtubeUrl)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
-              <Play className="h-4 w-4" /> YouTube
-            </a>
-          )}
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function InfoCard({ title, content, code = false }: { title: string; content: string; code?: boolean }) {
-  return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_4px_20px_rgba(15,23,42,0.03)]">
-      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">{title}</p>
-      {code ? (
-        <pre className="mt-3 whitespace-pre-wrap break-words font-mono text-sm leading-6 text-slate-700">{content}</pre>
-      ) : (
-        <p className="mt-3 text-base leading-7 text-slate-700">{content}</p>
-      )}
     </div>
   )
 }
@@ -1561,9 +1482,9 @@ function Footer() {
     <footer className="border-t border-slate-200 bg-white/80">
       <div className="mx-auto flex max-w-[1320px] flex-col gap-3 px-4 py-6 text-sm text-slate-500 md:flex-row md:items-center md:justify-between md:px-6 lg:px-8">
         <div>
-          <div className="text-lg font-bold text-[#0B1F3A]">Data Science Subject Laboratory</div>
+          <div className="text-lg font-bold text-[#0B1F3A]">Data Science Digital Library</div>
           <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-            Data Science Subject Laboratory – Experiments & Projects
+            Data Science Digital Library – Experiments & Projects
           </div>
         </div>
         <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-slate-500">
